@@ -14,7 +14,7 @@ import {
 import { TIERS, TOPICS, MENTORS } from './data';
 import type { Mentor, TierId, TopicId } from './types';
 
-const GITHUB_URL = 'https://github.com/NealFrazierTech/mentor-ledge';
+const GITHUB_URL = 'https://github.com/1nc0gn30/mentorship-marketplace';
 
 function fmtFollowers(n: number): string {
   if (n >= 1000) return `${(n / 1000).toFixed(1).replace(/\.0$/, '')}K`;
