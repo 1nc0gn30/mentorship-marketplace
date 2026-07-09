@@ -40,7 +40,6 @@ export const TOPICS: Topic[] = [
   { id: 'no-code', label: 'No-Code', emoji: '⚡' },
   { id: 'design', label: 'Design', emoji: '🎨' },
   { id: 'community', label: 'Community', emoji: '🤝' },
-  { id: 'fundraising', label: 'Fundraising', emoji: '💸' },
 ];
 
 // --- Real seed mentors (reused from the CreatorPlaybooks dataset). ---

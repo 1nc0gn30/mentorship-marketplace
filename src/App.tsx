@@ -329,8 +329,9 @@ export function App() {
           <div>
             <h2>Got experience? <span className="grad">Become a mentor</span></h2>
             <p>One step ahead of someone is enough. List your rate, pick your topics, and get booked — no agent, no gatekeeper. Start at $9, raise it as you grow.</p>
+            <span className="become-note">Concept — mentor applications open soon.</span>
           </div>
-          <a className="btn btn-primary" href={GITHUB_URL} target="_blank" rel="noreferrer">Apply to mentor →</a>
+          <a className="btn btn-primary" href="mailto:hello@mentorledge.app?subject=Mentor%20interest%20%2D%20Mentor%20Ledge">Apply to mentor →</a>
         </div>
       </section>
 
@@ -445,12 +446,13 @@ const BookingDrawer = forwardRef<HTMLDivElement, {
 
         {isBooked ? (
           <div className="booked">
-            <Calendar size={16} /> Request sent to {m.name}. You'll get a confirmation with a booking link.
-            <div className="booked-note">This is a concept demo — wire it to Stripe + Cal.com next.</div>
+            <Calendar size={16} /> Demo request sent to {m.name}.
+            <div className="booked-note">Concept demo only — no real booking is made. Stripe + Cal.com wiring comes next.</div>
           </div>
         ) : (
           <button className="btn btn-primary book-btn" data-book>
             <Calendar size={16} /> Book a session · ${m.rate}
+            <span className="book-btn-demo">demo</span>
           </button>
         )}
       </aside>

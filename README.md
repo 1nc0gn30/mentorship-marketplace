@@ -28,4 +28,5 @@ npm run build    # tsc -b && vite build
 ## Notes
 - Interactions are wired with **document-level event delegation** so they work even where
   React's synthetic event layer is suppressed — see the `useEffect` in `App.tsx`.
-- GitHub star/fork links point at `NealFrazierTech/mentor-ledge` (update when repo created).
+- GitHub star/fork links point at `1nc0gn30/mentorship-marketplace`.
+- Booking and "Become a mentor" are **concept demos** — no real backend yet (Stripe + Cal.com wiring is next).
