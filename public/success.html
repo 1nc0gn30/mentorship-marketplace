@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Unstuck — booking confirmed</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230a0a0f'/%3E%3Ctext x='50' y='66' font-size='56' text-anchor='middle' fill='%2322d3ee'%3E%E2%9C%BF%3C/text%3E%3C/svg%3E" />
+  <style>
+    :root { --bg:#0a0a0f; --text:#eef1f6; --muted:#9aa3b2; --cyan:#22d3ee; --green:#34d399; --grad:linear-gradient(100deg,#22d3ee,#6366f1 45%,#f472b6); }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { background:var(--bg); color:var(--text); font-family:'Instrument Sans',system-ui,sans-serif; -webkit-font-smoothing:antialiased; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
+    .wrap { width:100%; max-width:560px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.09); border-radius:22px; padding:34px; backdrop-filter:blur(14px); }
+    .badge { width:54px; height:54px; border-radius:16px; display:grid; place-items:center; background:var(--grad); color:#06070b; font-size:28px; font-weight:800; margin-bottom:18px; }
+    h1 { font-family:'Cal Sans','Schibsted Grotesk',system-ui,sans-serif; font-size:30px; letter-spacing:-0.02em; margin-bottom:8px; }
+    p.sub { color:var(--muted); margin-bottom:22px; line-height:1.55; }
+    .sid { font-family:'Spline Sans Mono',ui-monospace,monospace; font-size:12px; color:var(--muted); background:rgba(0,0,0,0.3); padding:8px 12px; border-radius:10px; word-break:break-all; margin-bottom:22px; }
+    h2 { font-size:14px; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); margin:22px 0 10px; }
+    .events { list-style:none; display:flex; flex-direction:column; gap:8px; }
+    .event { display:flex; justify-content:space-between; gap:12px; font-size:13px; padding:10px 12px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); }
+    .event .type { color:var(--cyan); font-family:'Spline Sans Mono',monospace; font-size:11.5px; }
+    .event .ok { color:var(--green); }
+    .cta { display:inline-flex; margin-top:24px; padding:12px 18px; border-radius:12px; background:var(--grad); color:#06070b; font-weight:650; text-decoration:none; }
+    .empty { color:var(--muted); font-size:13px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="badge">✓</div>
+    <h1>You're booked.</h1>
+    <p class="sub">Payment received in Stripe (test mode). Our webhook fired and your 30-minute working session is queued. This is a sandbox confirmation — no real charge was made.</p>
+    <div class="sid" id="sid">loading session…</div>
+
+    <h2>Webhook events (live from /api/events)</h2>
+    <ul class="events" id="events"><li class="empty">Waiting for events…</li></ul>
+
+    <a class="cta" href="/">← Back to Unstuck</a>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const sid = params.get('session_id') || 'unknown';
+    document.getElementById('sid').textContent = 'checkout_session_id: ' + sid;
+
+    fetch('/api/events')
+      .then(r => r.json())
+      .then(({ events }) => {
+        const ul = document.getElementById('events');
+        if (!events || !events.length) { ul.innerHTML = '<li class="empty">No webhook events received yet.</li>'; return; }
+        ul.innerHTML = events.map(e => {
+          const paid = e.type === 'checkout.session.completed' || e.type === 'checkout.session.async_payment_succeeded';
+          return `<li class="event"><span class="type">${e.type}</span><span class="${paid ? 'ok' : ''}">${paid ? '✔ paid' : 'received'}</span></li>`;
+        }).join('');
+      })
+      .catch(() => { document.getElementById('events').innerHTML = '<li class="empty">Could not reach API server.</li>'; });
+  </script>
+</body>
+</html>

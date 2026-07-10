@@ -1,32 +1,105 @@
-# Mentor Ledge
+# Unstuck
 
-Intro.com for the rest of us — a **tiered mentorship marketplace for small creators**,
-inspired by @buildwithmaya's idea: real mentorship broken out by **topic** (AI, growth,
-marketing, product, design, community, no-code) and by **stage** (cheap early guides →
-premium operators), so nobody has to spend $1,000s for 15 minutes with a founder.
+Tactical office hours with proven builders, marketers, and operators.
 
-> Concept build. Seed data is drawn from the CreatorPlaybooks mentor set (14 verified
-> builders/operators). Booking is a UI demo — wire it to Stripe + Cal.com next.
+**Get unstuck in one call with someone who has already solved your exact founder problem.**
+
+A managed niche marketplace for indie builders, SaaS founders, and creator-founders — not an
+"Intro.co for small creators" clone. The differentiation is **trust + specificity**, not scheduling
+or payments. Every session is a product, not a random call.
+
+> Concept build. Seed experts are drawn from the CreatorPlaybooks builder network (14 verified
+> builders/operators). Booking runs through **Stripe Payment Links (test mode)** via Netlify
+> Functions, with signed webhooks. Netlify Forms capture expert applications + leads.
+
+## The core promise
+
+> "Book a working session with someone who has already solved the exact problem you're stuck on."
+
+Outcome-based sessions, not generic advice:
+landing page teardown · SaaS idea validation · launch plan · X/content strategy ·
+offer/positioning review · first-users strategy · growth audit · newsletter growth call.
+
+## Start narrow — three wedges
+
+1. **Launch & distribution** — launch plan, first-users, growth audit
+2. **Landing page / positioning** — teardown, offer/positioning review
+3. **Founder content / X growth** — X strategy, newsletter growth call
+
+## How a session works (productized)
+
+1. **Pre-call intake** — tell us what you're stuck on; we match you with the right builder
+2. **AI-generated brief** — your expert gets a short brief so the 30 min go straight at your problem
+3. **30-minute working session** — a live, tactical call
+4. **Post-call action plan** — the exact next moves, in order
+5. **Templates & resources** — frameworks and checklists from the call
+
+## Vetting (our moat)
+
+We vet for proof, not polish:
+- Proof of work
+- Real audience or traction
+- Clear niche skill
+- Specific outcomes they can help with
+- No fake "guru" energy (no income screenshots, no guaranteed-results promises)
+
+## Business model
+
+- **10%** fee when the expert brings their own buyer
+- **20–30%** fee when the platform brings the buyer
+- Optional expert subscription later
+
+## Pricing (per person · 30-min session)
+
+- **$89** everyone else (rising builders)
+- **$249** Lynn · **$259** Jai · **$279** Ash · **$299** Conor (high-status)
+- **$449** KP (highest)
 
 ## Stack
+
 - Vite + React 19 + TypeScript
 - No CSS framework — hand-rolled neon/sci-fi theme in `src/index.css`
 - `lucide-react` icons
+- **Stripe** Payment Links (test mode) via **Netlify Functions** (`netlify/functions/`)
+- **Netlify Forms** for expert applications + lead capture (`public/forms.html`)
 
-## Run
+## Run locally
+
 ```bash
 npm install
-npm run dev      # http://localhost:5186
-npm run build    # tsc -b && vite build
+cp .env.example .env        # fill STRIPE_SECRET_KEY (test) + STRIPE_WEBHOOK_SECRET
+npm run dev                 # http://localhost:5186  (frontend)
+npm run server              # local API on :4242 (optional; Netlify Functions also work)
+stripe listen --forward-to localhost:4242/webhook   # forward webhooks locally
 ```
 
+## Deploy (Netlify)
+
+```bash
+netlify deploy --prod --build
+```
+
+Set these in the Netlify dashboard / `netlify env`:
+
+- `STRIPE_SECRET_KEY` — Stripe **test** secret key
+- `STRIPE_WEBHOOK_SECRET` — from `stripe listen --print-secret`
+
+The SPA's `/api/checkout`, `/api/events`, and `/webhook` are routed to Netlify Functions
+via `netlify.toml`. `/webhook` is the Stripe webhook destination (point your Stripe
+webhook endpoint at `https://<site>/.netlify/functions/webhook` for live test events).
+
 ## Structure
-- `src/data.ts` — tiers, topics, and the 14-mentor dataset (real avatars in `public/mentors/`)
-- `src/App.tsx` — hero, tier ladder, filters, mentor grid, booking drawer, mobile drawer
-- `src/types.ts` — `Mentor`, `Tier`, `Topic` types
+
+- `src/data.ts` — categories (3 wedges), 8 session types, tiers, and the 14-expert dataset (avatars in `public/mentors/`)
+- `src/App.tsx` — intake, wedges, session products, expert grid, booking drawer, mobile drawer, Netlify Forms
+- `src/types.ts` — `Expert`, `Category`, `SessionType`, `Tier` types
+- `netlify/functions/` — `checkout.mjs` (create Payment Link), `webhook.mjs` (signed), `events.mjs`
+- `public/forms.html` — hidden Netlify Forms definitions (`apply`, `lead`)
+- `public/success.html` — post-payment confirmation
 
 ## Notes
-- Interactions are wired with **document-level event delegation** so they work even where
-  React's synthetic event layer is suppressed — see the `useEffect` in `App.tsx`.
+
+- Interactions use **document-level event delegation** so they work even where React's synthetic
+  event layer is suppressed — see the `useEffect` in `App.tsx`.
 - GitHub star/fork links point at `1nc0gn30/mentorship-marketplace`.
-- Booking and "Become a mentor" are **concept demos** — no real backend yet (Stripe + Cal.com wiring is next).
+- Booking is real Stripe **test mode** — no actual charge is made.

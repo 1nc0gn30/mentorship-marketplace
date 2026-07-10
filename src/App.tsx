@@ -3,16 +3,17 @@ import {
   Menu,
   X,
   Search,
-  Star,
   Github,
   Check,
   Calendar,
   ArrowUpRight,
   Sparkles,
   Filter,
+  Target,
+  Crosshair,
 } from 'lucide-react';
-import { TIERS, TOPICS, MENTORS } from './data';
-import type { Mentor, TierId, TopicId } from './types';
+import { CATEGORIES, SESSIONS, TIERS, EXPERTS } from './data';
+import type { Expert, CategoryId, SessionId, TierId } from './types';
 
 const GITHUB_URL = 'https://github.com/1nc0gn30/mentorship-marketplace';
 
@@ -21,56 +22,102 @@ function fmtFollowers(n: number): string {
   return String(n);
 }
 
-function priceLabel(rate: number, note: string): string {
-  return `$${rate}${note.replace('per', '/')}`;
+// Pull the live render of a section into view (works even under suppressed scroll APIs).
+function scrollToId(id: string) {
+  const el = document.getElementById(id);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 export function App() {
   const [query, setQuery] = useState('');
+  const [category, setCategory] = useState<CategoryId | null>(null);
+  const [session, setSession] = useState<SessionId | null>(null);
   const [tier, setTier] = useState<TierId | null>(null);
-  const [topic, setTopic] = useState<TopicId | null>(null);
-  const [openMentor, setOpenMentor] = useState<Mentor | null>(null);
+  const [openExpert, setOpenExpert] = useState<Expert | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [booked, setBooked] = useState<string | null>(null);
+  const [pending, setPending] = useState<string | null>(null);
+  const [bookErr, setBookErr] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'tier' | 'priceAsc' | 'priceDesc'>('tier');
-  const [priceBand, setPriceBand] = useState<'all' | 'budget' | 'mid' | 'premium'>('all');
-
-  // Refs for native event wiring (environment-safe: works even if React synthetic
-  // event delegation is suppressed by the host browser).
+  const [intakeText, setIntakeText] = useState('');
+  const [leadSent, setLeadSent] = useState(false);
+  const [applyOpen, setApplyOpen] = useState(false);
+  const [applyDone, setApplyDone] = useState(false);
+  const [intakeSession, setIntakeSession] = useState<SessionId | null>(null);
   const onBookRef = useRef<() => void>(() => {});
+  onBookRef.current = () => {
+    const m = openExpert;
+    if (!m) return;
+    setPending(m.id);
+    setBookErr(null);
+    fetch('/api/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        expertId: m.id,
+        expertName: m.name,
+        amount: m.rate * 100, // dollars -> cents
+        sessionId: m.sessions[0],
+        sessionLabel: SESSIONS.find((s) => s.id === m.sessions[0])?.label,
+      }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        setPending(null);
+        if (data.url) {
+          window.location.href = data.url; // real Stripe-hosted Payment Link (test mode)
+        } else {
+          setBookErr(data.error || 'Could not start checkout.');
+        }
+      })
+      .catch((e) => {
+        setPending(null);
+        setBookErr('Network error: ' + e.message);
+      });
+  };
+
+  // Netlify Forms submission (no backend needed — Netlify captures + emails).
+  const submitNetlifyForm = async (formName: string, fields: Record<string, string>) => {
+    const fd = new FormData();
+    fd.append('form-name', formName);
+    Object.entries(fields).forEach(([k, v]) => fd.append(k, v));
+    await fetch('/', {
+      method: 'POST',
+      headers: { Accept: 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams(fd as any).toString(),
+    });
+  };
 
   const filtered = useMemo(() => {
-    let list = MENTORS.filter((m) => {
+    let list = EXPERTS.filter((m) => {
+      if (category && !m.categories.includes(category)) return false;
+      if (session && !m.sessions.includes(session)) return false;
       if (tier && m.tier !== tier) return false;
-      if (topic && !m.topics.includes(topic)) return false;
-      if (priceBand === 'budget' && m.rate > 29) return false;
-      if (priceBand === 'mid' && (m.rate < 30 || m.rate > 149)) return false;
-      if (priceBand === 'premium' && m.rate < 150) return false;
       if (query) {
         const q = query.toLowerCase();
-        const hay = `${m.name} ${m.handle} ${m.bio} ${m.strengths.join(' ')}`.toLowerCase();
+        const hay = `${m.name} ${m.handle} ${m.bio} ${m.proof.join(' ')} ${m.outcomes.join(' ')}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
     });
-    const tierRank: Record<TierId, number> = { rise: 0, build: 1, scale: 2 };
+    const tierRank: Record<TierId, number> = { micro: 0, proven: 1, status: 2 };
     if (sortBy === 'tier') list = [...list].sort((a, b) => tierRank[a.tier] - tierRank[b.tier] || a.rate - b.rate);
     if (sortBy === 'priceAsc') list = [...list].sort((a, b) => a.rate - b.rate);
     if (sortBy === 'priceDesc') list = [...list].sort((a, b) => b.rate - a.rate);
     return list;
-  }, [query, tier, topic, priceBand, sortBy]);
+  }, [query, category, session, tier, sortBy]);
 
-  const tierCount = (id: TierId) => MENTORS.filter((m) => m.tier === id).length;
-  const topicCount = (id: TopicId) => MENTORS.filter((m) => m.topics.includes(id)).length;
+  const categoryCount = (id: CategoryId) => EXPERTS.filter((m) => m.categories.includes(id)).length;
+  const sessionCount = (id: SessionId) => EXPERTS.filter((m) => m.sessions.includes(id)).length;
 
   const resetFilters = () => {
     setQuery('');
+    setCategory(null);
+    setSession(null);
     setTier(null);
-    setTopic(null);
-    setPriceBand('all');
   };
 
-  const activeFilterCount = (tier ? 1 : 0) + (topic ? 1 : 0) + (query ? 1 : 0) + (priceBand !== 'all' ? 1 : 0);
+  const activeFilterCount =
+    (category ? 1 : 0) + (session ? 1 : 0) + (tier ? 1 : 0) + (query ? 1 : 0);
 
   // Native delegated click handling attached at the DOCUMENT level, so it works
   // regardless of whether React's own synthetic event delegation is active.
@@ -78,11 +125,26 @@ export function App() {
     const onRootClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
 
-      const card = target.closest<HTMLElement>('[data-mentor]');
+      const card = target.closest<HTMLElement>('[data-expert]');
       if (card) {
-        const id = card.getAttribute('data-mentor')!;
-        const m = MENTORS.find((x) => x.id === id);
-        if (m) { setBooked(null); setOpenMentor(m); }
+        const id = card.getAttribute('data-expert')!;
+        const m = EXPERTS.find((x) => x.id === id);
+        if (m) { setPending(null); setBookErr(null); setOpenExpert(m); }
+        return;
+      }
+
+      const catBtn = target.closest<HTMLElement>('[data-category]');
+      if (catBtn) {
+        const id = catBtn.getAttribute('data-category') as CategoryId;
+        setCategory((cur) => (cur === id ? null : id));
+        return;
+      }
+
+      const sessBtn = target.closest<HTMLElement>('[data-session]');
+      if (sessBtn) {
+        const id = sessBtn.getAttribute('data-session') as SessionId;
+        setSession((cur) => (cur === id ? null : id));
+        scrollToId('experts');
         return;
       }
 
@@ -93,17 +155,26 @@ export function App() {
         return;
       }
 
-      const chip = target.closest<HTMLElement>('[data-topic]');
-      if (chip) {
-        const id = chip.getAttribute('data-topic') as TopicId;
-        setTopic((cur) => (cur === id ? null : id));
+      const intakeSess = target.closest<HTMLElement>('[data-intake-session]');
+      if (intakeSess) {
+        const id = intakeSess.getAttribute('data-intake-session') as SessionId;
+        setIntakeSession((cur) => (cur === id ? null : id));
         return;
       }
 
-      const priceChip = target.closest<HTMLElement>('[data-price]');
-      if (priceChip) {
-        const id = priceChip.getAttribute('data-price') as 'all' | 'budget' | 'mid' | 'premium';
-        setPriceBand((cur) => (cur === id ? 'all' : id));
+      const findBtn = target.closest<HTMLElement>('[data-find]');
+      if (findBtn) {
+        // Manual matching: carry the chosen session into the expert filter, then scroll.
+        if (intakeSession) setSession(intakeSession);
+        // Capture the lead via Netlify Forms (name/email optional in a later step).
+        submitNetlifyForm('lead', {
+          stuck: intakeText,
+          session: intakeSession ? SESSIONS.find((s) => s.id === intakeSession)?.label || '' : '',
+          name: '',
+          email: '',
+        }).catch(() => {});
+        setLeadSent(true);
+        scrollToId('experts');
         return;
       }
 
@@ -114,7 +185,7 @@ export function App() {
       if (bookBtn) { onBookRef.current(); return; }
 
       const closeBooking = target.closest<HTMLElement>('[data-close-booking]');
-      if (closeBooking || target.classList.contains('drawer-scrim')) { setOpenMentor(null); return; }
+      if (closeBooking || target.classList.contains('drawer-scrim')) { setOpenExpert(null); return; }
 
       const drawerLink = target.closest<HTMLElement>('[data-close-drawer]');
       if (drawerLink) { setDrawerOpen(false); return; }
@@ -126,6 +197,7 @@ export function App() {
     const onInput = (e: Event) => {
       const t = e.target as HTMLElement;
       if (t.matches('[data-search]')) setQuery((t as HTMLInputElement).value);
+      else if (t.matches('[data-intake]')) setIntakeText((t as HTMLTextAreaElement).value);
       else if (t.matches('[data-sort]')) setSortBy((t as HTMLSelectElement).value as typeof sortBy);
     };
     document.addEventListener('input', onInput);
@@ -135,6 +207,30 @@ export function App() {
       document.removeEventListener('input', onInput);
       document.removeEventListener('change', onInput);
     };
+  }, [intakeSession]);
+
+  // Scroll-reveal + active nav highlighting (does not touch click delegation).
+  useEffect(() => {
+    const reveals = document.querySelectorAll<HTMLElement>('.reveal');
+    const ro = new IntersectionObserver((entries) => {
+      entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); ro.unobserve(e.target); } });
+    }, { threshold: 0.12 });
+    reveals.forEach((el) => ro.observe(el));
+
+    const links = Array.from(document.querySelectorAll<HTMLAnchorElement>('.nav-links a[href^="#"]'));
+    const sections = links
+      .map((l) => document.getElementById(l.getAttribute('href')!.slice(1)))
+      .filter(Boolean) as HTMLElement[];
+    const navObserver = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (e.isIntersecting) {
+          links.forEach((l) => l.classList.toggle('active', l.getAttribute('href') === '#' + e.target.id));
+        }
+      });
+    }, { rootMargin: '-45% 0px -50% 0px' });
+    sections.forEach((s) => navObserver.observe(s));
+
+    return () => { ro.disconnect(); navObserver.disconnect(); };
   }, []);
 
   return (
@@ -147,12 +243,14 @@ export function App() {
       <header className="nav">
         <a className="brand" href="#top" data-close-drawer>
           <span className="brand-mark">✶</span>
-          <span className="brand-name">Mentor&nbsp;Ledge</span>
+          <span className="brand-name">Unstuck</span>
         </a>
 
         <nav className="nav-links">
-          <a href="#tiers">Tiers</a>
-          <a href="#mentors">Mentors</a>
+          <a href="#intake">Get matched</a>
+          <a href="#categories">Wedges</a>
+          <a href="#sessions">Sessions</a>
+          <a href="#experts">Experts</a>
           <a href="#how">How it works</a>
           <a className="nav-cta" href={GITHUB_URL} target="_blank" rel="noreferrer">
             <Github size={15} /> Star
@@ -167,8 +265,10 @@ export function App() {
       {/* MOBILE DRAWER */}
       <div className={`drawer-scrim ${drawerOpen ? 'show' : ''}`} />
       <aside className={`drawer ${drawerOpen ? 'open' : ''}`}>
-        <a href="#tiers" data-close-drawer>Tiers</a>
-        <a href="#mentors" data-close-drawer>Mentors</a>
+        <a href="#intake" data-close-drawer>Get matched</a>
+        <a href="#categories" data-close-drawer>Wedges</a>
+        <a href="#sessions" data-close-drawer>Sessions</a>
+        <a href="#experts" data-close-drawer>Experts</a>
         <a href="#how" data-close-drawer>How it works</a>
         <a className="drawer-cta" href={GITHUB_URL} target="_blank" rel="noreferrer" data-close-drawer>
           <Github size={15} /> Star on GitHub
@@ -178,62 +278,135 @@ export function App() {
       {/* HERO */}
       <section className="hero" id="top">
         <div className="hero-glass">
+          <div className="hero-glow" />
           <div className="kicker">
-            <span className="kicker-dot" /> mentorship at every stage of your journey
+            <span className="kicker-dot" /> tactical office hours with proven builders, marketers & operators
           </div>
           <h1 className="hero-title">
-            Mentor <span className="grad">Ledge</span>
+            Get <span className="grad grad-anim">unstuck</span> in one call.
           </h1>
           <p className="hero-sub">
-            Book the most in-demand builders & get advice over a videocall — without the
-            <span className="hl"> $1,000s-for-15-minutes</span> gate. Mentorship for small creators, broken out by
-            <span className="hl"> topic</span> (AI, growth, marketing, product) and by
-            <span className="hl"> stage</span> (cheap early guides → premium operators).
+            Book a working session with someone who has <span className="hl">already solved the exact problem</span> you're
+            stuck on. No generic advice, no guru energy — just a 30-minute session on a real outcome.
           </p>
           <div className="hero-actions">
-            <a className="btn btn-primary" href="#mentors">Find a mentor</a>
-            <a className="btn btn-ghost" href="#tiers">See the tiers</a>
+            <a className="btn btn-primary" href="#intake">Tell us what you're stuck on</a>
+            <a className="btn btn-ghost" href="#sessions">See the sessions</a>
           </div>
           <div className="hero-stats">
-            <div><strong>{MENTORS.length}</strong><span>verified mentors</span></div>
-            <div><strong>${Math.min(...MENTORS.map((m) => m.rate))}</strong><span>from / session</span></div>
-            <div><strong>{TOPICS.length}</strong><span>focus topics</span></div>
+            <div><strong>{EXPERTS.length}</strong><span>vetted experts</span></div>
+            <div><strong>{CATEGORIES.length}</strong><span>narrow wedges</span></div>
+            <div><strong>{SESSIONS.length}</strong><span>session types</span></div>
           </div>
         </div>
       </section>
 
-      {/* TIERS */}
-      <section className="section" id="tiers">
-        <div className="section-head">
-          <h2>Pick your <span className="grad">stage</span></h2>
-          <p>Three rungs on the ladder. Start cheap, move up as you grow.</p>
+      {/* LIVE PROOF TICKER */}
+      <div className="ticker">
+        <div className="ticker-inner">
+          <span className="ticker-label">Live</span>
+          <div className="ticker-track">
+            <span className="ticker-anim">
+              {EXPERTS.map((m) => (
+                <span key={m.id}><span className="dot">●</span> {m.name} · {m.handle} · ${m.rate}</span>
+              ))}
+              {EXPERTS.map((m) => (
+                <span key={`r-${m.id}`} aria-hidden><span className="dot">●</span> {m.name} · {m.handle} · ${m.rate}</span>
+              ))}
+            </span>
+          </div>
         </div>
-        <div className="tier-ladder">
-          {TIERS.map((t, i) => (
+      </div>
+
+      {/* INTAKE — the MVP mechanic */}
+      <section className="section reveal" id="intake">
+        <div className="section-head">
+          <h2>Tell us what you're <span className="grad">stuck on</span></h2>
+          <p>We'll match you with the right builder for a 30-minute working session. Start manually — pick the closest session, or just describe it.</p>
+        </div>
+        <div className="intake-glass">
+          <div className="intake-row">
+            {SESSIONS.map((s) => (
+              <button
+                key={s.id}
+                data-intake-session={s.id}
+                className={`intake-chip ${intakeSession === s.id ? 'active' : ''}`}
+              >
+                {s.emoji} {s.label}
+              </button>
+            ))}
+          </div>
+          <textarea
+            data-intake
+            className="intake-text"
+            rows={3}
+            placeholder="e.g. 'My SaaS landing page gets traffic but nobody signs up — and I can't tell if the idea is even worth it.'"
+            value={intakeText}
+            onChange={(e) => setIntakeText(e.target.value)}
+          />
+          <div className="intake-foot">
+            {leadSent ? (
+              <span className="intake-hint"><span className="kicker-dot" /> Lead captured — we'll match you. Browse experts below ↓</span>
+            ) : (
+              <span className="intake-hint">{intakeText.trim() ? 'Got it — ' : ''}matching is manual for now, but real.</span>
+            )}
+            <button className="btn btn-primary" data-find>
+              <Crosshair size={16} /> Find my expert
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* CATEGORIES — the 3 narrow wedges */}
+      <section className="section reveal" id="categories">
+        <div className="section-head">
+          <h2>Start <span className="grad">narrow</span></h2>
+          <p>Three wedges we go deep on. Trust + specificity, not a giant open directory.</p>
+        </div>
+        <div className="cat-grid">
+          {CATEGORIES.map((c) => (
+            <div key={c.id} className="cat-card" style={{ ['--accent' as string]: c.accent }}>
+              <div className="cat-emoji">{c.emoji}</div>
+              <h3>{c.label}</h3>
+              <p>{c.blurb}</p>
+              <div className="cat-count">{categoryCount(c.id)} experts</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* SESSIONS — productized outcomes */}
+      <section className="section reveal" id="sessions">
+        <div className="section-head">
+          <h2>Every session is a <span className="grad">product</span></h2>
+          <p>Pick the outcome you need. Each is a 30-minute working session with a real deliverable afterward.</p>
+        </div>
+        <div className="session-grid">
+          {SESSIONS.map((s) => (
             <button
-              key={t.id}
-              data-tier={t.id}
-              className={`tier-card ${tier === t.id ? 'active' : ''}`}
-              style={{ ['--accent' as string]: t.accent }}
+              key={s.id}
+              data-session={s.id}
+              className={`session-card ${session === s.id ? 'active' : ''}`}
             >
-              <div className="tier-rank">{i + 1}</div>
-              <div className="tier-emoji">{t.emoji}</div>
-              <div className="tier-label">{t.label}</div>
-              <div className="tier-price">
-                ${t.priceFrom}{t.priceTo ? `–$${t.priceTo}` : '+'} <span>/ session</span>
+              <div className="session-emoji">{s.emoji}</div>
+              <div className="session-body">
+                <h4>{s.label}</h4>
+                <p>{s.blurb}</p>
               </div>
-              <p className="tier-blurb">{t.blurb}</p>
-              <div className="tier-count">{tierCount(t.id)} mentors</div>
+              <div className="session-foot">
+                <span className="session-count">{sessionCount(s.id)} experts</span>
+                <span className="session-go">Find →</span>
+              </div>
             </button>
           ))}
         </div>
       </section>
 
-      {/* MENTORS */}
-      <section className="section" id="mentors">
+      {/* EXPERTS */}
+      <section className="section reveal" id="experts">
         <div className="section-head">
-          <h2>Find your <span className="grad">mentor</span></h2>
-          <p>Filter by topic, stage, or just search. Rates are honest and public.</p>
+          <h2>Vetted <span className="grad">experts</span></h2>
+          <p>Proof of work, real audience or traction, a clear niche. No "make $10K/month" gurus.</p>
         </div>
 
         <div className="controls">
@@ -242,16 +415,15 @@ export function App() {
             <input
               data-search
               className="search"
-              placeholder="Search mentors, skills, topics…"
+              placeholder="Search by name, skill, or proof…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
-
           <div className="sort-wrap">
             <Filter size={15} />
             <select data-sort value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)}>
-              <option value="tier">Sort: Tier ladder</option>
+              <option value="tier">Sort: Tier</option>
               <option value="priceAsc">Price: Low → High</option>
               <option value="priceDesc">Price: High → Low</option>
             </select>
@@ -259,38 +431,34 @@ export function App() {
         </div>
 
         <div className="chips">
-          {TOPICS.map((tp) => (
+          {CATEGORIES.map((c) => (
             <button
-              key={tp.id}
-              data-topic={tp.id}
-              className={`chip ${topic === tp.id ? 'active' : ''}`}
+              key={c.id}
+              data-category={c.id}
+              className={`chip ${category === c.id ? 'active' : ''}`}
+              style={{ ['--accent' as string]: c.accent }}
             >
-              {tp.emoji} {tp.label}
-              <span className="chip-count">{topicCount(tp.id)}</span>
+              {c.emoji} {c.label}
             </button>
           ))}
         </div>
 
         <div className="chips price-chips">
-          {([
-            { id: 'all', label: 'Any price', emoji: '💸' },
-            { id: 'budget', label: 'Budget · under $30', emoji: '🌱' },
-            { id: 'mid', label: 'Mid · $30–149', emoji: '🛠️' },
-            { id: 'premium', label: 'Premium · $150+', emoji: '📡' },
-          ] as const).map((p) => (
+          {TIERS.map((t) => (
             <button
-              key={p.id}
-              data-price={p.id}
-              className={`chip ${priceBand === p.id ? 'active' : ''}`}
+              key={t.id}
+              data-tier={t.id}
+              className={`chip ${tier === t.id ? 'active' : ''}`}
+              style={{ ['--accent' as string]: t.accent }}
             >
-              {p.emoji} {p.label}
+              {t.emoji} {t.label} · ${t.priceFrom}{t.priceTo ? `–$${t.priceTo}` : '+'}
             </button>
           ))}
         </div>
 
         {(activeFilterCount > 0) && (
           <div className="filter-bar">
-            <span>Showing {filtered.length} mentor{filtered.length !== 1 ? 's' : ''}</span>
+            <span>Showing {filtered.length} expert{filtered.length !== 1 ? 's' : ''}</span>
             <button className="clear-btn" data-clear>Clear filters ✕</button>
           </div>
         )}
@@ -298,79 +466,143 @@ export function App() {
         {filtered.length === 0 ? (
           <div className="empty">
             <Sparkles size={28} />
-            <p>No mentors match yet. Try clearing a filter.</p>
+            <p>No experts match yet. Try clearing a filter.</p>
             <button className="btn btn-ghost" onClick={resetFilters}>Reset</button>
           </div>
         ) : (
-          <div className="mentor-grid">
+          <div className="expert-grid">
             {filtered.map((m) => (
-              <MentorCard key={m.id} m={m} />
+              <ExpertCard key={m.id} m={m} />
             ))}
           </div>
         )}
       </section>
 
-      {/* HOW IT WORKS */}
-      <section className="section" id="how">
+      {/* VETTING — the differentiation */}
+      <section className="section reveal" id="vetting">
         <div className="section-head">
-          <h2>How it <span className="grad">works</span></h2>
-          <p>Three steps. No gatekeepers, no vanity pricing.</p>
+          <h2>We vet for <span className="grad">proof</span>, not polish</h2>
+          <p>Our moat is trust + specificity. Every expert clears the same bar.</p>
         </div>
-        <div className="steps">
-          <div className="step"><div className="step-num">1</div><h3>Pick a stage</h3><p>Rise for cheap early guidance, Build for traction help, Scale for hard-won playbooks.</p></div>
-          <div className="step"><div className="step-num">2</div><h3>Filter by topic</h3><p>AI, growth, marketing, product, design, community — only pay for the help you need.</p></div>
-          <div className="step"><div className="step-num">3</div><h3>Book a session</h3><p>Transparent rates, public profiles. Talk to someone one or ten steps ahead of you.</p></div>
+        <div className="vet-grid">
+          {[
+            { icon: '🛠️', t: 'Proof of work', d: 'Real shipped products, launches, or audience — not a course they sell you.' },
+            { icon: '📣', t: 'Real audience or traction', d: 'They have done the thing in public, with numbers to show for it.' },
+            { icon: '🎯', t: 'Clear niche skill', d: 'One or two things they are genuinely the right person for.' },
+            { icon: '✅', t: 'Specific outcomes', d: 'They can name exactly what you will leave the call with.' },
+            { icon: '🚫', t: 'No guru energy', d: 'No fake income screenshots, no guaranteed-results promises.' },
+            { icon: '🤝', t: 'Builders helping builders', d: 'Operators one or ten steps ahead — not professional coaches.' },
+          ].map((v) => (
+            <div key={v.t} className="vet-card">
+              <div className="vet-icon">{v.icon}</div>
+              <h4>{v.t}</h4>
+              <p>{v.d}</p>
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* SUPPLY CTA — become a mentor (mirrors intro.co's expert funnel) */}
-      <section className="section become">
+      {/* HOW IT WORKS — productized session flow */}
+      <section className="section reveal" id="how">
+        <div className="section-head">
+          <h2>How a <span className="grad">session</span> works</h2>
+          <p>Every call is a product, not a random chat. Five steps, end to end.</p>
+        </div>
+        <div className="steps">
+          <div className="step"><div className="step-num">1</div><h3>Pre-call intake</h3><p>Tell us what you're stuck on and we match you with the right builder.</p></div>
+          <div className="step"><div className="step-num">2</div><h3>AI-generated brief</h3><p>We hand your expert a short brief so the 30 minutes go straight at your problem.</p></div>
+          <div className="step"><div className="step-num">3</div><h3>30-min working session</h3><p>A live, tactical call — teardown, plan, or audit you can act on immediately.</p></div>
+          <div className="step"><div className="step-num">4</div><h3>Post-call action plan</h3><p>You leave with a written plan of the exact next moves, in order.</p></div>
+          <div className="step"><div className="step-num">5</div><h3>Templates & resources</h3><p>We send the frameworks, checklists, and templates from the call.</p></div>
+        </div>
+      </section>
+
+      {/* SUPPLY CTA — become an expert */}
+      <section className="section become reveal">
         <div className="become-glass">
           <div>
-            <h2>Got experience? <span className="grad">Become a mentor</span></h2>
-            <p>One step ahead of someone is enough. List your rate, pick your topics, and get booked — no agent, no gatekeeper. Start at $9, raise it as you grow.</p>
-            <span className="become-note">Concept — mentor applications open soon.</span>
+            <h2>Got proof of work? <span className="grad">Become an expert</span></h2>
+            <p>A managed niche marketplace — we don't let anyone list themselves. Show us the work, pass vetting, and we match you with founders who are stuck on exactly your thing. Manual matching + Stripe to start.</p>
+            <span className="become-note">Concept — expert applications open soon. No guru energy, ever.</span>
           </div>
-          <a className="btn btn-primary" href="mailto:hello@mentorledge.app?subject=Mentor%20interest%20%2D%20Mentor%20Ledge">Apply to mentor →</a>
+          {applyDone ? (
+            <div className="apply-done">✓ Application received — we'll review your proof of work.</div>
+          ) : applyOpen ? (
+            <form
+              className="apply-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const f = e.currentTarget;
+                submitNetlifyForm('apply', {
+                  name: (f.elements.namedItem('name') as HTMLInputElement).value,
+                  email: (f.elements.namedItem('email') as HTMLInputElement).value,
+                  xHandle: (f.elements.namedItem('xHandle') as HTMLInputElement).value,
+                  proof: (f.elements.namedItem('proof') as HTMLInputElement).value,
+                  niche: (f.elements.namedItem('niche') as HTMLInputElement).value,
+                  message: (f.elements.namedItem('message') as HTMLTextAreaElement).value,
+                })
+                  .then(() => setApplyDone(true))
+                  .catch(() => setApplyDone(true));
+              }}
+            >
+              <input name="name" placeholder="Your name" required />
+              <input name="email" type="email" placeholder="Email" required />
+              <input name="xHandle" placeholder="X / social handle" />
+              <input name="proof" placeholder="Link to proof of work" />
+              <input name="niche" placeholder="Your one niche skill" />
+              <textarea name="message" rows={2} placeholder="One line on what you'd help founders with" />
+              <div className="apply-actions">
+                <button type="submit" className="btn btn-primary">Submit application →</button>
+                <button type="button" className="btn btn-ghost" onClick={() => setApplyOpen(false)}>Cancel</button>
+              </div>
+            </form>
+          ) : (
+            <button className="btn btn-primary" onClick={() => setApplyOpen(true)}>Apply to join →</button>
+          )}
         </div>
       </section>
 
       <footer className="footer">
         <div className="footer-inner">
           <div>
-            <div className="brand"><span className="brand-mark">✶</span><span className="brand-name">Mentor Ledge</span></div>
-            <p className="footer-tag">Mentorship at every stage. Inspired by @buildwithmaya.</p>
+            <div className="brand"><span className="brand-mark">✶</span><span className="brand-name">Unstuck</span></div>
+            <p className="footer-tag">Tactical office hours with proven builders, marketers, and operators.</p>
           </div>
           <div className="footer-links">
             <a href={GITHUB_URL} target="_blank" rel="noreferrer"><Github size={15} /> GitHub</a>
-            <a href="#mentors">Browse mentors</a>
-            <a href="#tiers">Tiers</a>
-            <a href="#how">Gift a session</a>
+            <a href="#experts">Browse experts</a>
+            <a href="#sessions">Session types</a>
+            <a href="#how">How it works</a>
           </div>
         </div>
-        <div className="footer-note">A concept marketplace — seed data from the CreatorPlaybooks mentor set. Modeled on intro.co, built for small creators.</div>
+        <div className="footer-note">
+          A concept marketplace — seed experts drawn from the CreatorPlaybooks builder network. Managed niche marketplace first, not an open platform. Payments run through Stripe Payment Links (test mode) with signed webhooks.
+        </div>
       </footer>
 
       {/* BOOKING DRAWER */}
-      {openMentor && (
-        (onBookRef.current = () => setBooked(openMentor.id)),
+      {openExpert && (
         <BookingDrawer
-          m={openMentor}
-          booked={booked}
+          m={openExpert}
+          pending={pending === openExpert.id}
+          bookErr={pending === openExpert.id ? null : bookErr}
+          onBook={onBookRef.current}
         />
       )}
     </div>
   );
 }
 
-function MentorCard({ m }: { m: Mentor }) {
+function ExpertCard({ m }: { m: Expert }) {
   const tierMeta = TIERS.find((t) => t.id === m.tier)!;
+  const isTop = m.tier === 'status';
   return (
     <article
-      data-mentor={m.id}
-      className="card"
+      data-expert={m.id}
+      className={`card${isTop ? ' card-top-tier' : ''}`}
       style={{ ['--accent' as string]: tierMeta.accent }}
     >
+      {isTop && <span className="top-ribbon">★ Top tier</span>}
       <div className="card-top">
         <div className="avatar-wrap">
           <img src={m.avatar} alt={m.name} loading="lazy" />
@@ -385,10 +617,11 @@ function MentorCard({ m }: { m: Mentor }) {
       </div>
       <p className="card-bio">{m.bio}</p>
       <div className="card-tags">
-        {m.topics.map((t) => {
-          const tp = TOPICS.find((x) => x.id === t)!;
-          return <span key={t} className="tag">{tp.emoji} {tp.label}</span>;
+        {m.sessions.slice(0, 3).map((s) => {
+          const sess = SESSIONS.find((x) => x.id === s)!;
+          return <span key={s} className="tag">{sess.emoji} {sess.label}</span>;
         })}
+        {m.sessions.length > 3 && <span className="tag tag-more">+{m.sessions.length - 3} more</span>}
       </div>
       <div className="card-foot">
         <div className="rate">
@@ -402,11 +635,12 @@ function MentorCard({ m }: { m: Mentor }) {
 }
 
 const BookingDrawer = forwardRef<HTMLDivElement, {
-  m: Mentor;
-  booked: string | null;
-}>(function BookingDrawer({ m, booked }, ref) {
+  m: Expert;
+  pending: boolean;
+  bookErr: string | null;
+  onBook: () => void;
+}>(function BookingDrawer({ m, pending, bookErr, onBook }, ref) {
   const tierMeta = TIERS.find((t) => t.id === m.tier)!;
-  const isBooked = booked === m.id;
   return (
     <div ref={ref}>
       <div className="drawer-scrim show" />
@@ -419,41 +653,57 @@ const BookingDrawer = forwardRef<HTMLDivElement, {
             <a className="handle" href={`https://x.com/${m.xHandle}`} target="_blank" rel="noreferrer">
               {m.handle} <ArrowUpRight size={12} />
             </a>
-            <div className="booking-tier">{tierMeta.emoji} {tierMeta.label} tier</div>
+            <div className="booking-tier">{tierMeta.emoji} {tierMeta.label} · {fmtFollowers(m.followers)} followers</div>
           </div>
         </div>
 
         <p className="booking-bio">{m.bio}</p>
 
-        <div className="booking-stats">
-          <div><Star size={13} /> {fmtFollowers(m.followers)} followers</div>
-          <div>{priceLabel(m.rate, m.rateNote)}</div>
+        <div className="booking-price">
+          <div>
+            <div className="bp-amt">${m.rate}</div>
+            <div className="bp-note">{m.rateNote}</div>
+          </div>
+          <span className="bp-per">{tierMeta.emoji} {tierMeta.label}</span>
         </div>
 
-        <h4>What you'll get help with</h4>
+        <h4>Proof of work</h4>
         <ul className="strengths">
-          {m.strengths.map((s) => (
+          {m.proof.map((s) => (
             <li key={s}><Check size={14} /> {s}</li>
           ))}
         </ul>
 
+        <h4>What you'll leave with</h4>
+        <ul className="strengths outcomes">
+          {m.outcomes.map((s) => (
+            <li key={s}><Target size={14} /> {s}</li>
+          ))}
+        </ul>
+
+        <h4>Sessions they run</h4>
         <div className="booking-topics">
-          {m.topics.map((t) => {
-            const tp = TOPICS.find((x) => x.id === t)!;
-            return <span key={t} className="tag">{tp.emoji} {tp.label}</span>;
+          {m.sessions.map((s) => {
+            const sess = SESSIONS.find((x) => x.id === s)!;
+            return <span key={s} className="tag">{sess.emoji} {sess.label}</span>;
           })}
         </div>
 
-        {isBooked ? (
-          <div className="booked">
-            <Calendar size={16} /> Demo request sent to {m.name}.
-            <div className="booked-note">Concept demo only — no real booking is made. Stripe + Cal.com wiring comes next.</div>
-          </div>
-        ) : (
-          <button className="btn btn-primary book-btn" data-book>
-            <Calendar size={16} /> Book a session · ${m.rate}
-            <span className="book-btn-demo">demo</span>
+        {pending ? (
+          <button className="btn btn-primary book-btn" disabled>
+            <Calendar size={16} /> Starting checkout… <span className="book-btn-demo">test</span>
           </button>
+        ) : (
+          <button className="btn btn-primary book-btn" data-book onClick={onBook}>
+            <Calendar size={16} /> Book a session · ${m.rate}
+            <span className="book-btn-demo">test</span>
+          </button>
+        )}
+        {bookErr && (
+          <div className="booked book-err">
+            <span>{bookErr}</span>
+            <div className="booked-note">Payment Links are created in Stripe test mode. Make sure the API server is running.</div>
+          </div>
         )}
       </aside>
     </div>

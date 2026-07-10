@@ -10,6 +10,11 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# env / secrets
+.env
+.env.*
+!.env.example
+
 # editor / OS
 .vscode/*
 !.vscode/extensions.json
@@ -20,3 +25,9 @@ pnpm-debug.log*
 *.njsproj
 *.sln
 *.sw?
+
+# Local Netlify folder
+.netlify
+
+# local webhook event log
+.webhook-events.jsonl
