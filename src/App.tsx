@@ -11,9 +11,17 @@ import {
   Filter,
   Target,
   Crosshair,
+  Send,
+  Mail,
+  RefreshCw,
+  DollarSign,
+  Briefcase,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { CATEGORIES, SESSIONS, TIERS, EXPERTS } from './data';
 import type { Expert, CategoryId, SessionId, TierId } from './types';
+import { HeroViz } from './HeroViz';
 
 const GITHUB_URL = 'https://github.com/1nc0gn30/mentorship-marketplace';
 
@@ -29,6 +37,13 @@ function scrollToId(id: string) {
 }
 
 export function App() {
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('unstuck-theme');
+      if (saved === 'light' || saved === 'dark') return saved;
+    }
+    return 'dark';
+  });
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<CategoryId | null>(null);
   const [session, setSession] = useState<SessionId | null>(null);
@@ -43,7 +58,21 @@ export function App() {
   const [applyOpen, setApplyOpen] = useState(false);
   const [applyDone, setApplyDone] = useState(false);
   const [intakeSession, setIntakeSession] = useState<SessionId | null>(null);
+  const [contactExpert, setContactExpert] = useState<Expert | null>(null);
+  const [contactSent, setContactSent] = useState(false);
+  const [contactSending, setContactSending] = useState(false);
+  const [updateDone, setUpdateDone] = useState(false);
+  const [updateSending, setUpdateSending] = useState(false);
+  const [updateExpertId, setUpdateExpertId] = useState<string>('');
   const onBookRef = useRef<() => void>(() => {});
+
+  // Apply theme to document + persist
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('unstuck-theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
   onBookRef.current = () => {
     const m = openExpert;
     if (!m) return;
@@ -124,6 +153,17 @@ export function App() {
   useEffect(() => {
     const onRootClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
+
+      const contactBtn = target.closest<HTMLElement>('[data-contact]');
+      if (contactBtn) {
+        const id = contactBtn.getAttribute('data-contact')!;
+        const m = EXPERTS.find((x) => x.id === id);
+        if (m) { setContactSent(false); setContactExpert(m); }
+        return;
+      }
+
+      const closeContact = target.closest<HTMLElement>('[data-close-contact]');
+      if (closeContact) { setContactExpert(null); return; }
 
       const card = target.closest<HTMLElement>('[data-expert]');
       if (card) {
@@ -207,7 +247,7 @@ export function App() {
       document.removeEventListener('input', onInput);
       document.removeEventListener('change', onInput);
     };
-  }, [intakeSession]);
+  }, [intakeSession, contactExpert]);
 
   // Scroll-reveal + active nav highlighting (does not touch click delegation).
   useEffect(() => {
@@ -252,10 +292,17 @@ export function App() {
           <a href="#sessions">Sessions</a>
           <a href="#experts">Experts</a>
           <a href="#how">How it works</a>
+          <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle theme">
+            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
           <a className="nav-cta" href={GITHUB_URL} target="_blank" rel="noreferrer">
             <Github size={15} /> Star
           </a>
         </nav>
+
+        <button className="theme-toggle mobile-theme-toggle" onClick={toggleTheme} aria-label="Toggle theme">
+          {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+        </button>
 
         <button className="hamburger" data-hamburger aria-label="Open menu">
           <Menu size={22} />
@@ -270,6 +317,14 @@ export function App() {
         <a href="#sessions" data-close-drawer>Sessions</a>
         <a href="#experts" data-close-drawer>Experts</a>
         <a href="#how" data-close-drawer>How it works</a>
+        <a href="#update" data-close-drawer>Update your card</a>
+        <div className="drawer-theme-row">
+          <span>Appearance</span>
+          <button className="drawer-theme-btn" onClick={toggleTheme}>
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+          </button>
+        </div>
         <a className="drawer-cta" href={GITHUB_URL} target="_blank" rel="noreferrer" data-close-drawer>
           <Github size={15} /> Star on GitHub
         </a>
@@ -279,6 +334,7 @@ export function App() {
       <section className="hero" id="top">
         <div className="hero-glass">
           <div className="hero-glow" />
+          <HeroViz theme={theme} />
           <div className="kicker">
             <span className="kicker-dot" /> tactical office hours with proven builders, marketers & operators
           </div>
@@ -517,6 +573,130 @@ export function App() {
         </div>
       </section>
 
+      {/* EXPERT SELF-UPDATE — listed experts can update their info */}
+      <section className="section reveal" id="update">
+        <div className="section-head">
+          <h2>Already listed? <span className="grad">Update your card</span></h2>
+          <p>Change your rate, bio, available sessions, or pause your listing. We review changes before they go live.</p>
+        </div>
+        <div className="update-glass">
+          {updateDone ? (
+            <div className="update-success">
+              <div className="check-circle"><Check size={28} /></div>
+              <h3>Update received</h3>
+              <p>We'll review your changes and push them live within 24 hours. You'll get a confirmation at the email you provided.</p>
+              <button className="btn btn-ghost" onClick={() => { setUpdateDone(false); setUpdateExpertId(''); }}>Submit another update</button>
+            </div>
+          ) : (
+            <form
+              className="update-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const f = e.currentTarget;
+                const expert = EXPERTS.find((x) => x.id === updateExpertId);
+                setUpdateSending(true);
+                submitNetlifyForm('expert-update', {
+                  expertName: expert?.name || '',
+                  expertHandle: expert?.handle || '',
+                  email: (f.elements.namedItem('email') as HTMLInputElement).value,
+                  newRate: (f.elements.namedItem('newRate') as HTMLInputElement).value,
+                  newBio: (f.elements.namedItem('newBio') as HTMLTextAreaElement).value,
+                  sessions: Array.from(f.querySelectorAll('input[name="sessions"]:checked'))
+                    .map((cb) => (cb as HTMLInputElement).value).join(', '),
+                  availability: (f.elements.namedItem('availability') as HTMLSelectElement).value,
+                  notes: (f.elements.namedItem('notes') as HTMLTextAreaElement).value,
+                })
+                  .then(() => { setUpdateDone(true); setUpdateSending(false); })
+                  .catch(() => { setUpdateDone(true); setUpdateSending(false); });
+              }}
+            >
+              <div className="update-row">
+                <label className="update-label">
+                  <span><Briefcase size={13} /> Who are you?</span>
+                  <select
+                    name="expertId"
+                    value={updateExpertId}
+                    onChange={(e) => setUpdateExpertId(e.target.value)}
+                    required
+                  >
+                    <option value="">Select your name...</option>
+                    {EXPERTS.map((m) => (
+                      <option key={m.id} value={m.id}>{m.name} ({m.handle})</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="update-label">
+                  <span><Mail size={13} /> Your email</span>
+                  <input name="email" type="email" placeholder="you@example.com" required />
+                </label>
+              </div>
+
+              {updateExpertId && (() => {
+                const m = EXPERTS.find((x) => x.id === updateExpertId)!;
+                return (
+                  <div className="update-current">
+                    <img src={m.avatar} alt={m.name} />
+                    <div>
+                      <strong>{m.name}</strong>
+                      <span>Current rate: ${m.rate} · {m.sessions.length} sessions · {m.tier}</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <div className="update-row">
+                <label className="update-label">
+                  <span><DollarSign size={13} /> New rate ($)</span>
+                  <input name="newRate" type="number" min="10" max="1000" placeholder="e.g. 99" />
+                </label>
+                <label className="update-label">
+                  <span><RefreshCw size={13} /> Availability</span>
+                  <select name="availability" defaultValue="available">
+                    <option value="available">Available for sessions</option>
+                    <option value="limited">Limited — a few slots left</option>
+                    <option value="paused">Pause my listing temporarily</option>
+                    <option value="remove">Remove me from the marketplace</option>
+                  </select>
+                </label>
+              </div>
+
+              <label className="update-label">
+                <span>Updated bio (one paragraph)</span>
+                <textarea name="newBio" rows={3} placeholder="Keep it short — what you do, who you help, proof of work." />
+              </label>
+
+              <div className="update-label">
+                <span>Sessions you offer</span>
+                <div className="update-sessions">
+                  {SESSIONS.map((s) => {
+                    const expert = EXPERTS.find((x) => x.id === updateExpertId);
+                    const checked = expert?.sessions.includes(s.id);
+                    return (
+                      <label key={s.id} className={`update-check ${checked ? 'pre-checked' : ''}`}>
+                        <input type="checkbox" name="sessions" value={s.label} defaultChecked={checked} />
+                        {s.emoji} {s.label}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <label className="update-label">
+                <span>Anything else we should know?</span>
+                <textarea name="notes" rows={2} placeholder="Updated proof links, new outcomes, schedule changes, etc." />
+              </label>
+
+              <div className="update-actions">
+                <button type="submit" className="btn btn-primary" disabled={updateSending}>
+                  <RefreshCw size={15} /> {updateSending ? 'Sending...' : 'Submit update'}
+                </button>
+              </div>
+              <p className="update-note">Changes are reviewed before going live. We'll email you when your card is updated.</p>
+            </form>
+          )}
+        </div>
+      </section>
+
       {/* SUPPLY CTA — become an expert */}
       <section className="section become reveal">
         <div className="become-glass">
@@ -589,6 +769,29 @@ export function App() {
           onBook={onBookRef.current}
         />
       )}
+
+      {/* CONTACT MODAL */}
+      {contactExpert && (
+        <ContactModal
+          m={contactExpert}
+          sent={contactSent}
+          sending={contactSending}
+          onSubmit={async (fields) => {
+            setContactSending(true);
+            try {
+              await submitNetlifyForm('expert-contact', {
+                expertName: contactExpert.name,
+                expertHandle: contactExpert.handle,
+                ...fields,
+              });
+              setContactSent(true);
+            } catch {
+              setContactSent(true);
+            }
+            setContactSending(false);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -630,6 +833,12 @@ function ExpertCard({ m }: { m: Expert }) {
         </div>
         <div className="card-cta">Book →</div>
       </div>
+      <button
+        className="contact-btn-card"
+        data-contact={m.id}
+      >
+        <Mail size={13} /> Contact
+      </button>
     </article>
   );
 }
@@ -699,6 +908,12 @@ const BookingDrawer = forwardRef<HTMLDivElement, {
             <span className="book-btn-demo">test</span>
           </button>
         )}
+        <button
+          className="btn btn-ghost contact-btn-drawer"
+          data-contact={m.id}
+        >
+          <Mail size={15} /> Send a message instead
+        </button>
         {bookErr && (
           <div className="booked book-err">
             <span>{bookErr}</span>
@@ -709,3 +924,98 @@ const BookingDrawer = forwardRef<HTMLDivElement, {
     </div>
   );
 });
+
+function ContactModal({
+  m,
+  sent,
+  sending,
+  onSubmit,
+}: {
+  m: Expert;
+  sent: boolean;
+  sending: boolean;
+  onSubmit: (fields: Record<string, string>) => Promise<void>;
+}) {
+  return (
+    <div className="contact-modal" data-close-contact>
+      <div className="contact-box">
+        <button className="contact-close" data-close-contact aria-label="Close">
+          <X size={20} />
+        </button>
+
+        {sent ? (
+          <div className="contact-success">
+            <div className="check-circle"><Check size={28} /></div>
+            <h3>Message sent to {m.name}</h3>
+            <p>We received your message and will pass it along. {m.name.split(' ')[0]} will get back to you at the email you provided.</p>
+            <button className="contact-btn-secondary" data-close-contact>Done</button>
+          </div>
+        ) : (
+          <>
+            <div className="contact-head">
+              <img src={m.avatar} alt={m.name} />
+              <div>
+                <h3>Contact {m.name}</h3>
+                <a className="handle" href={`https://x.com/${m.xHandle}`} target="_blank" rel="noreferrer">
+                  {m.handle} <ArrowUpRight size={12} />
+                </a>
+              </div>
+            </div>
+
+            <form
+              className="contact-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const f = e.currentTarget;
+                onSubmit({
+                  name: (f.elements.namedItem('name') as HTMLInputElement).value,
+                  email: (f.elements.namedItem('email') as HTMLInputElement).value,
+                  session: (f.elements.namedItem('session') as HTMLSelectElement).value,
+                  message: (f.elements.namedItem('message') as HTMLTextAreaElement).value,
+                });
+              }}
+            >
+              <div className="contact-row">
+                <label>
+                  <span>Your name</span>
+                  <input name="name" placeholder="Jane Doe" required />
+                </label>
+                <label>
+                  <span>Email</span>
+                  <input name="email" type="email" placeholder="jane@example.com" required />
+                </label>
+              </div>
+              <label>
+                <span>Which session are you interested in?</span>
+                <div className="sort-wrap" style={{ width: '100%' }}>
+                  <select name="session" defaultValue={m.sessions[0]}>
+                    {m.sessions.map((s) => {
+                      const sess = SESSIONS.find((x) => x.id === s)!;
+                      return <option key={s} value={sess.label}>{sess.emoji} {sess.label}</option>;
+                    })}
+                    <option value="Not sure yet">Not sure yet</option>
+                  </select>
+                </div>
+              </label>
+              <label>
+                <span>What do you need help with?</span>
+                <textarea name="message" rows={4} placeholder={`Tell ${m.name.split(' ')[0]} what you're stuck on...`} required />
+              </label>
+              <div className="contact-actions">
+                <button type="submit" className="btn btn-primary" disabled={sending}>
+                  <Send size={15} /> {sending ? 'Sending…' : 'Send message'}
+                </button>
+                <button type="button" className="contact-btn-secondary" data-close-contact>
+                  Cancel
+                </button>
+              </div>
+              <p className="contact-send-note">
+                Your message goes to {m.name}'s inbox via our system. No spam, no sharing.
+              </p>
+            </form>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -6,26 +6,91 @@
   <title>Unstuck — booking confirmed</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230a0a0f'/%3E%3Ctext x='50' y='66' font-size='56' text-anchor='middle' fill='%2322d3ee'%3E%E2%9C%BF%3C/text%3E%3C/svg%3E" />
   <style>
-    :root { --bg:#0a0a0f; --text:#eef1f6; --muted:#9aa3b2; --cyan:#22d3ee; --green:#34d399; --grad:linear-gradient(100deg,#22d3ee,#6366f1 45%,#f472b6); }
+    :root {
+      --bg:#07070c; --bg-2:#0c0c14;
+      --text:#eef1f6; --muted:#8b94a8; --muted-2:#6a728a;
+      --cyan:#22d3ee; --pink:#f472b6; --green:#34d399; --violet:#818cf8;
+      --grad:linear-gradient(100deg,#22d3ee,#6366f1 45%,#f472b6);
+      --panel:rgba(255,255,255,0.035);
+      --panel-2:rgba(255,255,255,0.06);
+      --panel-brd:rgba(255,255,255,0.08);
+      --panel-brd-2:rgba(255,255,255,0.13);
+      --font-display:'Cal Sans','Schibsted Grotesk',system-ui,sans-serif;
+      --font-body:'Instrument Sans',system-ui,sans-serif;
+      --font-mono:'Spline Sans Mono',ui-monospace,monospace;
+    }
     * { box-sizing:border-box; margin:0; padding:0; }
-    body { background:var(--bg); color:var(--text); font-family:'Instrument Sans',system-ui,sans-serif; -webkit-font-smoothing:antialiased; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
-    .wrap { width:100%; max-width:560px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.09); border-radius:22px; padding:34px; backdrop-filter:blur(14px); }
-    .badge { width:54px; height:54px; border-radius:16px; display:grid; place-items:center; background:var(--grad); color:#06070b; font-size:28px; font-weight:800; margin-bottom:18px; }
-    h1 { font-family:'Cal Sans','Schibsted Grotesk',system-ui,sans-serif; font-size:30px; letter-spacing:-0.02em; margin-bottom:8px; }
-    p.sub { color:var(--muted); margin-bottom:22px; line-height:1.55; }
-    .sid { font-family:'Spline Sans Mono',ui-monospace,monospace; font-size:12px; color:var(--muted); background:rgba(0,0,0,0.3); padding:8px 12px; border-radius:10px; word-break:break-all; margin-bottom:22px; }
-    h2 { font-size:14px; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); margin:22px 0 10px; }
-    .events { list-style:none; display:flex; flex-direction:column; gap:8px; }
-    .event { display:flex; justify-content:space-between; gap:12px; font-size:13px; padding:10px 12px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); }
-    .event .type { color:var(--cyan); font-family:'Spline Sans Mono',monospace; font-size:11.5px; }
-    .event .ok { color:var(--green); }
-    .cta { display:inline-flex; margin-top:24px; padding:12px 18px; border-radius:12px; background:var(--grad); color:#06070b; font-weight:650; text-decoration:none; }
+    body {
+      background:var(--bg); color:var(--text);
+      font-family:var(--font-body); -webkit-font-smoothing:antialiased;
+      min-height:100vh; display:flex; align-items:center; justify-content:center;
+      padding:24px; position:relative; overflow-x:hidden;
+    }
+    /* background orbs */
+    .orb { position:fixed; border-radius:50%; filter:blur(100px); opacity:0.3; z-index:0; pointer-events:none; }
+    .orb-1 { width:400px; height:400px; background:radial-gradient(circle,#22d3ee,transparent 70%); top:-120px; left:-80px; animation:float 18s ease-in-out infinite; }
+    .orb-2 { width:360px; height:360px; background:radial-gradient(circle,#f472b6,transparent 70%); bottom:-120px; right:-80px; animation:float 22s ease-in-out infinite reverse; }
+    @keyframes float { 0%,100%{transform:translate(0,0);} 50%{transform:translate(30px,40px);} }
+    .wrap {
+      position:relative; z-index:1; width:100%; max-width:580px;
+      background:linear-gradient(160deg,rgba(255,255,255,0.07),rgba(255,255,255,0.02));
+      border:1px solid var(--panel-brd-2); border-radius:28px; padding:40px 36px;
+      backdrop-filter:blur(20px) saturate(1.3);
+      box-shadow:0 30px 80px -30px rgba(34,211,238,0.15), inset 0 1px 0 rgba(255,255,255,0.08), 0 0 120px -40px rgba(99,102,241,0.1);
+    }
+    .badge {
+      width:56px; height:56px; border-radius:18px; display:grid; place-items:center;
+      background:var(--grad); color:#06070b; font-size:28px; font-weight:800;
+      margin-bottom:22px;
+      box-shadow:0 10px 30px -10px rgba(99,102,241,0.5), inset 0 1px 0 rgba(255,255,255,0.25);
+      animation:badgePop 0.5s cubic-bezier(.2,.7,.2,1);
+    }
+    @keyframes badgePop { from { opacity:0; transform:scale(0.7); } to { opacity:1; transform:none; } }
+    h1 { font-family:var(--font-display); font-size:34px; letter-spacing:-0.03em; margin-bottom:10px; }
+    p.sub { color:var(--muted); margin-bottom:24px; line-height:1.6; font-size:15px; }
+    .sid {
+      font-family:var(--font-mono); font-size:12px; color:var(--muted);
+      background:rgba(0,0,0,0.35); padding:12px 14px; border-radius:12px;
+      word-break:break-all; margin-bottom:24px;
+      border:1px solid var(--panel-brd);
+    }
+    h2 { font-size:12px; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted); margin:24px 0 12px; font-weight:600; }
+    .events { list-style:none; display:flex; flex-direction:column; gap:10px; }
+    .event {
+      display:flex; justify-content:space-between; align-items:center; gap:12px;
+      font-size:13px; padding:12px 14px; border-radius:14px;
+      background:linear-gradient(165deg,var(--panel-2),var(--panel));
+      border:1px solid var(--panel-brd);
+      transition:transform 0.15s, border-color 0.2s;
+    }
+    .event:hover { transform:translateX(2px); border-color:var(--panel-brd-2); }
+    .event .type { color:var(--cyan); font-family:var(--font-mono); font-size:11.5px; }
+    .event .ok { color:var(--green); font-weight:600; }
+    .cta {
+      display:inline-flex; align-items:center; gap:8px;
+      margin-top:28px; padding:13px 22px; border-radius:14px;
+      background:var(--grad); color:#06070b; font-weight:650; text-decoration:none; font-size:15px;
+      box-shadow:0 10px 30px -10px rgba(99,102,241,0.6), inset 0 1px 0 rgba(255,255,255,0.2);
+      transition:transform 0.15s, box-shadow 0.2s;
+    }
+    .cta:hover { transform:translateY(-2px); box-shadow:0 14px 40px -10px rgba(34,211,238,0.6); }
     .empty { color:var(--muted); font-size:13px; }
+    .status-pill {
+      display:inline-flex; align-items:center; gap:7px;
+      padding:7px 14px; border-radius:999px; font-size:12px; font-weight:600;
+      background:color-mix(in srgb, var(--green) 12%, transparent); border:1px solid var(--green); color:var(--green);
+      margin-bottom:18px;
+    }
+    .status-pill .dot { width:7px; height:7px; border-radius:50%; background:var(--green); box-shadow:0 0 8px var(--green); animation:pulse 1.8s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
   </style>
 </head>
 <body>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
   <div class="wrap">
     <div class="badge">✓</div>
+    <div class="status-pill"><span class="dot"></span> Payment confirmed</div>
     <h1>You're booked.</h1>
     <p class="sub">Payment received in Stripe (test mode). Our webhook fired and your 30-minute working session is queued. This is a sandbox confirmation — no real charge was made.</p>
     <div class="sid" id="sid">loading session…</div>
