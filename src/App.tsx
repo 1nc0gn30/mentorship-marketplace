@@ -106,14 +106,19 @@ export function App() {
 
   // Netlify Forms submission (no backend needed — Netlify captures + emails).
   const submitNetlifyForm = async (formName: string, fields: Record<string, string>) => {
-    const fd = new FormData();
-    fd.append('form-name', formName);
-    Object.entries(fields).forEach(([k, v]) => fd.append(k, v));
-    await fetch('/', {
+    const body = new URLSearchParams();
+    body.append('form-name', formName);
+    body.append('bot-field', ''); // honeypot — must be present + empty for Netlify
+    Object.entries(fields).forEach(([k, v]) => body.append(k, v ?? ''));
+    const res = await fetch('/', {
       method: 'POST',
-      headers: { Accept: 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams(fd as any).toString(),
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Accept: 'application/x-www-form-urlencoded',
+      },
+      body: body.toString(),
     });
+    if (!res.ok) throw new Error(`Netlify Forms responded ${res.status}`);
   };
 
   const filtered = useMemo(() => {
