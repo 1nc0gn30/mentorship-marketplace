@@ -1,3 +1,60 @@
+# mentorship-marketplace
+
+A project by Neal Frazier
+
+## Overview
+This repository is part of Neal Frazier project collection.
+
+## Tech Stack
+- React
+- Vite
+- Express
+- Netlify (deployed)
+
+## Project Structure
+```
+mentorship-marketplace/
+  - netlify
+  - public
+  - server
+  - src
+  (34 files total)
+```
+
+## Getting Started
+
+### Prerequisites
+- Node.js (v18+)
+- npm or yarn
+
+### Installation
+```bash
+git clone https://github.com/1nc0gn30/mentorship-marketplace.git
+cd mentorship-marketplace
+npm install
+```
+
+### Development
+```bash
+npm run dev
+```
+
+### Build
+```bash
+npm run build
+```
+
+### Available Scripts
+  npm run dev - vite
+  npm run build - tsc -b && vite build
+  npm run lint - eslint .
+  npm run preview - vite preview
+  npm run server - node server/index.js
+
+## Original README
+<details>
+<summary>Click to expand original README</summary>
+
 # Unstuck
 
 Tactical office hours with proven builders, marketers, and operators.
@@ -103,3 +160,29 @@ webhook endpoint at `https://<site>/.netlify/functions/webhook` for live test ev
   event layer is suppressed — see the `useEffect` in `App.tsx`.
 - GitHub star/fork links point at `1nc0gn30/mentorship-marketplace`.
 - Booking is real Stripe **test mode** — no actual charge is made.
+
+</details>
+
+## TODO / Roadmap
+- [ ] Add unit tests
+- [ ] Add LICENSE file
+- [ ] Add Dockerfile for containerized deployment
+- [ ] Consider adding Tailwind CSS
+- [ ] Add CI/CD pipeline
+- [ ] Add contribution guidelines (CONTRIBUTING.md)
+- [ ] Improve error handling and edge cases
+- [ ] Add environment variable documentation
+- [ ] Update dependencies to latest versions
+- [ ] Add code comments and inline documentation
+
+## Deployment
+This project is deployed on Netlify. See netlify.toml for configuration.
+
+## Author
+**Neal Frazier** - [@AshAmplifies](https://github.com/1nc0gn30)
+
+## Links
+- GitHub: https://github.com/1nc0gn30/mentorship-marketplace
+
+---
+*This README was enhanced as part of the neals-projects-2026 batch update.*
