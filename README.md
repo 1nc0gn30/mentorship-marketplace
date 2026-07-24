@@ -1,17 +1,29 @@
-# mentorship-marketplace
+<!-- xonettn -->
+<div align="center">
+
+# ⚛️ Mentorship Marketplace
 
 A project by Neal Frazier
 
-## Overview
+
+![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB) ![Vite](https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white) ![Express](https://img.shields.io/badge/Express-000000?logo=express&logoColor=white) ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white) ![Three.js](https://img.shields.io/badge/Three.js-000000?logo=three.js&logoColor=white) ![Netlify](https://img.shields.io/badge/Netlify-00C7B7?logo=netlify&logoColor=white)
+
+![Deploy](https://img.shields.io/badge/Deployed-Netlify-00C7B7?logo=netlify&logoColor=white)
+
+</div>
+
+---
+
+## 📋 Overview
 This repository is part of Neal Frazier project collection.
 
-## Tech Stack
+## 📦 Tech Stack
 - React
 - Vite
 - Express
 - Netlify (deployed)
 
-## Project Structure
+## 🗂️ Project Structure
 ```
 mentorship-marketplace/
   - netlify
@@ -21,37 +33,37 @@ mentorship-marketplace/
   (34 files total)
 ```
 
-## Getting Started
+## 🚀 Getting Started
 
-### Prerequisites
+### 📋 Prerequisites
 - Node.js (v18+)
 - npm or yarn
 
-### Installation
+### 📦 Installation
 ```bash
 git clone https://github.com/1nc0gn30/mentorship-marketplace.git
 cd mentorship-marketplace
 npm install
 ```
 
-### Development
+### 💻 Development
 ```bash
 npm run dev
 ```
 
-### Build
+### 🔨 Build
 ```bash
 npm run build
 ```
 
-### Available Scripts
+### ⚙️ Available Scripts
   npm run dev - vite
   npm run build - tsc -b && vite build
   npm run lint - eslint .
   npm run preview - vite preview
   npm run server - node server/index.js
 
-## Original README
+## 📂 Original README
 <details>
 <summary>Click to expand original README</summary>
 
@@ -112,7 +124,7 @@ We vet for proof, not polish:
 - **$249** Lynn · **$259** Jai · **$279** Ash · **$299** Conor (high-status)
 - **$449** KP (highest)
 
-## Stack
+## 📦 Stack
 
 - Vite + React 19 + TypeScript
 - No CSS framework — hand-rolled neon/sci-fi theme in `src/index.css`
@@ -120,7 +132,7 @@ We vet for proof, not polish:
 - **Stripe** Payment Links (test mode) via **Netlify Functions** (`netlify/functions/`)
 - **Netlify Forms** for expert applications + lead capture (`public/forms.html`)
 
-## Run locally
+## 🚀 Run locally
 
 ```bash
 npm install
@@ -130,7 +142,7 @@ npm run server              # local API on :4242 (optional; Netlify Functions al
 stripe listen --forward-to localhost:4242/webhook   # forward webhooks locally
 ```
 
-## Deploy (Netlify)
+## 🚀 Deploy (Netlify)
 
 ```bash
 netlify deploy --prod --build
@@ -145,7 +157,7 @@ The SPA's `/api/checkout`, `/api/events`, and `/webhook` are routed to Netlify F
 via `netlify.toml`. `/webhook` is the Stripe webhook destination (point your Stripe
 webhook endpoint at `https://<site>/.netlify/functions/webhook` for live test events).
 
-## Structure
+## 🗂️ Structure
 
 - `src/data.ts` — categories (3 wedges), 8 session types, tiers, and the 14-expert dataset (avatars in `public/mentors/`)
 - `src/App.tsx` — intake, wedges, session products, expert grid, booking drawer, mobile drawer, Netlify Forms
@@ -154,7 +166,7 @@ webhook endpoint at `https://<site>/.netlify/functions/webhook` for live test ev
 - `public/forms.html` — hidden Netlify Forms definitions (`apply`, `lead`)
 - `public/success.html` — post-payment confirmation
 
-## Notes
+## 📝 Notes
 
 - Interactions use **document-level event delegation** so they work even where React's synthetic
   event layer is suppressed — see the `useEffect` in `App.tsx`.
@@ -163,7 +175,7 @@ webhook endpoint at `https://<site>/.netlify/functions/webhook` for live test ev
 
 </details>
 
-## TODO / Roadmap
+## 📝 TODO / Roadmap
 - [ ] Add unit tests
 - [ ] Add LICENSE file
 - [ ] Add Dockerfile for containerized deployment
@@ -175,14 +187,22 @@ webhook endpoint at `https://<site>/.netlify/functions/webhook` for live test ev
 - [ ] Update dependencies to latest versions
 - [ ] Add code comments and inline documentation
 
-## Deployment
+## 🚀 Deployment
 This project is deployed on Netlify. See netlify.toml for configuration.
 
-## Author
+## 👤 Author
 **Neal Frazier** - [@AshAmplifies](https://github.com/1nc0gn30)
 
-## Links
+## 🔗 Links
 - GitHub: https://github.com/1nc0gn30/mentorship-marketplace
 
 ---
 *This README was enhanced as part of the neals-projects-2026 batch update.*
+
+---
+
+<div align="center">
+
+**[xonettn]** · Built by [Neal Frazier](https://github.com/1nc0gn30) · [@AshAmplifies](https://twitter.com/AshAmplifies)
+
+</div>
